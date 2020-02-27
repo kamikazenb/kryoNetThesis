@@ -32,6 +32,12 @@ public class KryoServer {
                 // We know all connections for this server are actually CharacterConnections.
                 ClientConnection connection = (ClientConnection) c;
                 ClientData clientData = connection.clientData;
+                if(object instanceof Network.Integers){
+                    System.out.println(((Network.Integers) object).arrayIntegers.size());
+                }
+                if(object instanceof Network.Info){
+                    System.out.println(((Network.Info)object).message);
+                }
                 if (object instanceof Network.Register) {
                     if (clientData != null) {
                         return;
@@ -78,7 +84,7 @@ public class KryoServer {
     }
 
     public static void main(String[] args) throws IOException {
-        Log.set(Log.LEVEL_DEBUG);
+        Log.set(Log.LEVEL_INFO);
         System.out.println("Creating server...");
         new KryoServer();
     }

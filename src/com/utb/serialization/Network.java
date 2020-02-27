@@ -10,6 +10,7 @@ public class Network {
 
     static public void register (EndPoint endPoint) {
         Kryo kryo = endPoint.getKryo();
+        kryo.register(ArrayList.class);
         kryo.register(Integers.class);
         kryo.register(Register.class);
         kryo.register(Info.class);
