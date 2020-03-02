@@ -6,7 +6,7 @@ import com.esotericsoftware.kryonet.EndPoint;
 import java.util.ArrayList;
 
 public class Network {
-    static public final int port = 54555;
+    static public final int port = 50201;
 
     static public void register (EndPoint endPoint) {
         Kryo kryo = endPoint.getKryo();
