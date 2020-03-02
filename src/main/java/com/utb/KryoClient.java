@@ -5,6 +5,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.minlog.Log;
 import com.utb.serialization.Network;
+import fr.bmartel.speedtest.SpeedTestSocket;
 
 import java.io.IOException;
 import java.net.NetworkInterface;
@@ -14,6 +15,7 @@ import java.util.Scanner;
 public class KryoClient {
     Client client;
     String name;
+    SpeedTestSocket speedTestSocket = new SpeedTestSocket();
 
     public KryoClient() {
         client = new Client();
@@ -37,7 +39,7 @@ public class KryoClient {
             }
         }));
         try {
-            client.connect(5000, "localhost", Network.port);
+            client.connect(5000, "195.178.94.66", Network.port);
             // Server communication after connection can go here, or in Listener#connected().
         } catch (IOException ex) {
             ex.printStackTrace();
