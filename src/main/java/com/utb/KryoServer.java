@@ -6,13 +6,22 @@ import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import com.utb.serialization.Network;
+import fr.bmartel.speedtest.SpeedTestReport;
+import fr.bmartel.speedtest.SpeedTestSocket;
+import fr.bmartel.speedtest.inter.ISpeedTestListener;
+import fr.bmartel.speedtest.model.SpeedTestError;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Scanner;
 
 public class KryoServer {
     Server server;
     HashSet<ClientData> loggedIn = new HashSet();
+    SpeedTestSocket speedTestSocket;
 
     public KryoServer() throws IOException {
         server = new Server() {
@@ -32,11 +41,11 @@ public class KryoServer {
                 // We know all connections for this server are actually CharacterConnections.
                 ClientConnection connection = (ClientConnection) c;
                 ClientData clientData = connection.clientData;
-                if(object instanceof Network.Integers){
+                if (object instanceof Network.Integers) {
                     System.out.println(((Network.Integers) object).arrayIntegers.size());
                 }
-                if(object instanceof Network.Info){
-                    System.out.println(((Network.Info)object).message);
+                if (object instanceof Network.Info) {
+                    System.out.println(((Network.Info) object).message);
                 }
                 if (object instanceof Network.Register) {
                     if (clientData != null) {
@@ -74,9 +83,57 @@ public class KryoServer {
         });
         server.bind(Network.port);
         server.start();
-        System.out.println("its done");
+
+        new Console();
     }
 
+    public class Console {
+        public Console() {
+            speedTestSocket = new SpeedTestSocket();
+            speedTestSocket.addSpeedTestListener(new ISpeedTestListener() {
+
+                @Override
+                public void onCompletion(SpeedTestReport report) {
+                    // called when download/upload is complete
+                    BigDecimal divisor = new BigDecimal("1000000");
+                    System.out.println(report.getTransferRateOctet().divide(divisor).round(new MathContext(3)) + " MB/s  " +
+                            report.getTransferRateBit().divide(divisor).round(new MathContext(3)) + " mbps ");
+
+                }
+
+                @Override
+                public void onError(SpeedTestError speedTestError, String errorMessage) {
+                    // called when a download/upload error occur
+                }
+
+                @Override
+                public void onProgress(float percent, SpeedTestReport report) {
+                    // called to notify download/upload progress
+
+                    BigDecimal divisor = new BigDecimal("1000000");
+                    System.out.print(percent + "%  " + report.getTransferRateOctet().divide(divisor).round(new MathContext(3)) + " MB/s  " +
+                            report.getTransferRateBit().divide(divisor).round(new MathContext(3)) + " mbps \r");
+                }
+            });
+            start();
+        }
+
+        public void start() {
+            Scanner scanner = new Scanner(System.in);
+            while (true) {
+                String ipnut = scanner.next().trim();
+                switch (ipnut) {
+                    case "download":
+                        speedTestSocket.startDownload("ftp://speedtest.tele2.net/5MB.zip");
+                        break;
+                    case "upload":
+                        speedTestSocket.startUpload("http://ipv4.ikoula.testdebit.info/", 1000000, 1000);
+                        break;
+                }
+
+            }
+        }
+    }
 
     // This holds per connection state.
     static class ClientConnection extends Connection {

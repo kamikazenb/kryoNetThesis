@@ -4,7 +4,6 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
-import sun.misc.Unsafe;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.util.HashSet;
