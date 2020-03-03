@@ -1,4 +1,4 @@
-package com.utb.serialization;
+package cz.utb.serialization;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.EndPoint;

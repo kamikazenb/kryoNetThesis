@@ -1,24 +1,20 @@
-package com.utb;
+package cz.utb;
 
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.minlog.Log;
-import com.utb.serialization.Network;
+import cz.utb.serialization.Network;
 import fr.bmartel.speedtest.SpeedTestReport;
 import fr.bmartel.speedtest.SpeedTestSocket;
-import fr.bmartel.speedtest.inter.IRepeatListener;
 import fr.bmartel.speedtest.inter.ISpeedTestListener;
 import fr.bmartel.speedtest.model.SpeedTestError;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Scanner;
-import java.util.logging.LogManager;
-import java.util.logging.Logger;
 
 public class KryoClient {
     Client client;
@@ -84,7 +80,6 @@ public class KryoClient {
             }
         });
         new Console();
-
     }
 
     public class Console {

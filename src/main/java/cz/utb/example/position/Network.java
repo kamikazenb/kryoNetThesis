@@ -1,4 +1,4 @@
-package com.utb.example.position;
+package cz.utb.example.position;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.EndPoint;

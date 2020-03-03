@@ -1,4 +1,4 @@
-package com.utb.example.position;
+package cz.utb.example.position;
 
 public class Character {
     public String name;

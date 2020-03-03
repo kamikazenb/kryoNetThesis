@@ -1,12 +1,12 @@
-package com.utb.example.position;
+package cz.utb.example.position;
 
-import com.utb.example.position.*;
+import cz.utb.example.position.*;
 
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.minlog.Log;
-import com.utb.example.position.Character.*;
+
 import javax.swing.*;
 import java.io.IOException;
 import java.util.HashMap;

@@ -1,11 +1,10 @@
-package com.utb.example.position;
+package cz.utb.example.position;
 
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import java.io.*;
-import java.lang.reflect.Field;
 import java.util.HashSet;
 
 public class PositionServer {
@@ -84,7 +83,7 @@ public class PositionServer {
                         return;
                     }
 
-                    character = new   Character();
+                    character = new Character();
                     character.name = register.name;
                     character.otherStuff = register.otherStuff;
                     character.x = 0;
@@ -200,7 +199,7 @@ public class PositionServer {
         DataInputStream input = null;
         try {
             input = new DataInputStream(new FileInputStream(file));
-             Character character = new  Character();
+             Character character = new Character();
             character.id = input.readInt();
             character.name = name;
             character.otherStuff = input.readUTF();
