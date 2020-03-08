@@ -20,7 +20,7 @@ public class KryoClient {
     Client client;
     String name;
     SpeedTestSocket speedTestSocket;
-
+    TokenGenerator tokenGenerator = new TokenGenerator();
 
     public KryoClient() {
         client = new Client();
@@ -32,7 +32,9 @@ public class KryoClient {
         client.addListener(new Listener.ThreadedListener(new Listener() {
             public void connected(Connection connection) {
                 Network.Register register = new Network.Register();
-                register.name = "testHost1";
+                register.userName = "testHost1";
+                register.token = tokenGenerator.generateRandom(20);
+                register.systemName =  register.userName;
                 client.sendTCP(register);
             }
 
@@ -41,10 +43,31 @@ public class KryoClient {
                     Network.Info info = (Network.Info) object;
                     System.out.println(info.message);
                 }
+                if (object instanceof Network.Register) {
+                    Network.Register register = (Network.Register) object;
+                    if (register.userName == null || register.systemName == null) {
+                        System.out.println("no connection paired");
+                    } else {
+                        System.out.println("paired " + register.systemName + " " + register.token);
+                    }
+                }
+                if (object instanceof Network.RegisteredUsers) {
+                    Network.RegisteredUsers registeredUsers = (Network.RegisteredUsers) object;
+                    try {
+                        System.out.println("Registred users on server:");
+                        for (int i = 0; i < registeredUsers.users.size(); i++) {
+                            System.out.println(registeredUsers.users.get(i).systemName +
+                                    " "+ registeredUsers.users.get(i).userName+
+                                    " "+ registeredUsers.users.get(i).token);
+                        }
+                    } catch (Exception e) {
+                    }
+                }
             }
+
         }));
         try {
-            //195.178.94.66
+            //195.178.94.66    localhost
             client.connect(5000, "localhost", Network.port);
             // Server communication after connection can go here, or in Listener#connected().
         } catch (IOException ex) {
@@ -60,8 +83,8 @@ public class KryoClient {
             public void onCompletion(SpeedTestReport report) {
                 // called when download/upload is complete
                 BigDecimal divisor = new BigDecimal("1000000");
-                System.out.println(report.getTransferRateOctet().divide(divisor).round(new MathContext(3))+" MB/s  "+
-                        report.getTransferRateBit().divide(divisor).round(new MathContext(3))  +" mbps ");
+                System.out.println(report.getTransferRateOctet().divide(divisor).round(new MathContext(3)) + " MB/s  " +
+                        report.getTransferRateBit().divide(divisor).round(new MathContext(3)) + " mbps ");
 
             }
 
@@ -75,8 +98,8 @@ public class KryoClient {
                 // called to notify download/upload progress
 
                 BigDecimal divisor = new BigDecimal("1000000");
-                System.out.print(percent + "%  "+report.getTransferRateOctet().divide(divisor).round(new MathContext(3))+" MB/s  "+
-                        report.getTransferRateBit().divide(divisor).round(new MathContext(3))  +" mbps \r");
+                System.out.print(percent + "%  " + report.getTransferRateOctet().divide(divisor).round(new MathContext(3)) + " MB/s  " +
+                        report.getTransferRateBit().divide(divisor).round(new MathContext(3)) + " mbps \r");
             }
         });
         new Console();

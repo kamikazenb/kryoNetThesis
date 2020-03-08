@@ -13,13 +13,14 @@ import fr.bmartel.speedtest.model.SpeedTestError;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.util.HashSet;
-import java.util.Scanner;
+import java.util.*;
 
 public class KryoServer {
     Server server;
     HashSet<ClientData> loggedIn = new HashSet();
+    HashMap<String, ClientConnection> connections = new HashMap<>();
     SpeedTestSocket speedTestSocket;
+    TokenGenerator tokenGenerator = new TokenGenerator();
 
     public KryoServer() throws IOException {
         server = new Server() {
@@ -45,37 +46,56 @@ public class KryoServer {
                 if (object instanceof Network.Info) {
                     System.out.println(((Network.Info) object).message);
                 }
+                if (object instanceof Network.Pair) {
+                    Network.Pair pair = (Network.Pair) object;
+                    if (pair.seekerAccepted && !pair.respondentAccepted) {
+                        try {
+                            server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
+                        } catch (Exception e) {
+                        }
+                    }
+                    if (pair.seekerAccepted && pair.respondentAccepted) {
+                        try {
+                            pair(pair.tokenPairRespondent, pair.tokenPairSeeker);
+                            server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
+                            server.sendToTCP(connections.get(pair.tokenPairSeeker).getID(), pair);
+                        } catch (Exception e) {
+                        }
+                    }
+                }
                 if (object instanceof Network.Register) {
                     if (clientData != null) {
                         return;
                     }
-                    System.out.println("register");
                     Network.Register register = (Network.Register) object;
-                    String name = register.name;
-                    if (name != null) {
-                        name = name.trim();
-                        if (name.length() != 0) {
-                            clientData = new ClientData();
-                            clientData.name = name;
-                            Network.Info info = new Network.Info();
-                            info.message = name + " connected";
-                            server.sendToAllTCP(info);
-                            info.message = "welcome";
-                            server.sendToTCP(connection.getID(), info);
-                            loggedIn.add(clientData);
+                    String userName = register.userName;
+                    String systemName = register.systemName;
+                    String token = register.token;
+                    if (userName != null && systemName != null && token != null) {
+                        System.out.println("registered: user name <" + userName + "> system name:  <"
+                                + systemName + "> token <" + token + ">");
+                        systemName = systemName.trim();
+
+                        if (systemName.length() != 0) {
+                            ((ClientConnection) c).clientData = new ClientData();
+                            ((ClientConnection) c).clientData.userName = userName;
+                            ((ClientConnection) c).clientData.systemName = systemName;
+                            ((ClientConnection) c).clientData.token = token;                            
+                            loggedIn.add(((ClientConnection) c).clientData);
+                            connections.put(((ClientConnection) c).clientData.token, connection);
+                            sendRegisteredUsers();
                         }
                     }
-
                 }
             }
 
             public void disconnected(Connection c) {
                 ClientConnection connection = (ClientConnection) c;
                 if (connection.clientData != null) {
+                    unpair(((ClientConnection) c).clientData.token);
+                    connections.remove(connection.clientData.systemName);
                     loggedIn.remove(connection.clientData);
-                    Network.Info info = new Network.Info();
-                    info.message = "disconnected " + connection.clientData.name;
-                    server.sendToAllTCP(info);
+                    sendRegisteredUsers();
                 }
             }
         });
@@ -83,6 +103,65 @@ public class KryoServer {
         server.start();
 
         new Console();
+    }
+
+    public void unpair(String incomeToken) {
+        ClientConnection income = connections.get(incomeToken);
+        if(income.clientData.pair != null){
+            ClientConnection paired = income.clientData.pair;
+            paired.clientData.pair = null;
+        }
+    }
+
+    public void pair(String c1Token, String c2Token) {
+        ClientConnection c1 = connections.get(c1Token);
+        ClientConnection c2 = connections.get(c2Token);
+        c1.clientData.pair = c2;
+        c2.clientData.pair = c1;
+    }
+
+    public boolean checkPair(String incomeToken) {
+        ClientConnection income = connections.get(incomeToken);
+        if (connections.size() < 2) {
+            return false;
+        }
+        for (Map.Entry<String, ClientConnection> entry : connections.entrySet()) {
+            String key = entry.getKey();
+            ClientConnection value = entry.getValue();
+
+            if (!key.equals(incomeToken)) {
+                if (value.clientData.systemName.equals(income.clientData.systemName)) {
+                    income.clientData.pair = value;
+                    value.clientData.pair = income;
+                    Network.Register partner = new Network.Register();
+                    partner.systemName = income.clientData.systemName;
+                    partner.userName = income.clientData.userName;
+                    partner.token = income.clientData.token;
+                    server.sendToTCP(income.getID(), partner);
+                    partner.systemName = value.clientData.systemName;
+                    partner.userName = value.clientData.userName;
+                    partner.token = value.clientData.token;
+                    server.sendToTCP(value.getID(), partner);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public void sendRegisteredUsers() {
+        Network.RegisteredUsers registeredUsers = new Network.RegisteredUsers();
+        registeredUsers.users = new ArrayList<Network.Register>();
+        for (Iterator<ClientData> aa = loggedIn.iterator(); aa.hasNext(); ) {
+            ClientData cd = aa.next();
+            Network.Register register = new Network.Register();
+            register.userName = cd.userName;
+            register.systemName = cd.systemName;
+            register.token = cd.token;
+            registeredUsers.users.add(register);
+        }
+        server.sendToAllTCP(registeredUsers);
     }
 
     public class Console {
@@ -95,7 +174,7 @@ public class KryoServer {
                     // called when download/upload is complete
                     BigDecimal divisor = new BigDecimal("1000000");
                     System.out.print("[completed] "
-                            +report.getTransferRateOctet().divide(divisor).round(new MathContext(3)) + " MB/s  " +
+                            + report.getTransferRateOctet().divide(divisor).round(new MathContext(3)) + " MB/s  " +
                             report.getTransferRateBit().divide(divisor).round(new MathContext(3)) + " mbps \n");
                 }
 
@@ -107,11 +186,25 @@ public class KryoServer {
                 @Override
                 public void onProgress(float percent, SpeedTestReport report) {
                     // called to notify download/upload progress
-
                     BigDecimal divisor = new BigDecimal("1000000");
-                    System.out.print("[testing] "+percent + "%  "
+                    StringBuilder sb = new StringBuilder("[");
+                    int round = (int) percent;
+                    if (round < 10) {
+                        sb.append("..........");
+                    } else {
+                        int firstDigit = Integer.parseInt(Integer.toString(round).substring(0, 1));
+                        for (int i = 0; i < firstDigit - 1; i++) {
+                            sb.append("=");
+                        }
+                        sb.append(">");
+                        for (int i = 0; i < 10 - firstDigit; i++) {
+                            sb.append(".");
+                        }
+                    }
+                    sb.append("] "
                             + report.getTransferRateOctet().divide(divisor).round(new MathContext(3)) + " MB/s  " +
                             report.getTransferRateBit().divide(divisor).round(new MathContext(3)) + " mbps \r");
+                    System.out.print(sb.toString());
                 }
             });
             start();
