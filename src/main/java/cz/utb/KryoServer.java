@@ -48,20 +48,36 @@ public class KryoServer {
                 }
                 if (object instanceof Network.Pair) {
                     Network.Pair pair = (Network.Pair) object;
-                    if (pair.seekerAccepted && !pair.respondentAccepted) {
-                        try {
-                            server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
-                        } catch (Exception e) {
+                    if(connections.get(pair.tokenPairSeeker).clientData.pair!=null ||
+                            connections.get(pair.tokenPairRespondent).clientData.pair!=null  ){
+                        if (!pair.seekerAccepted) {
+                            try {
+                                unpair(pair.tokenPairRespondent);
+                                unpair(pair.tokenPairSeeker);
+                                server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
+                                server.sendToTCP(connections.get(pair.tokenPairSeeker).getID(), pair);
+                            } catch (Exception e) {
+                            }
                         }
-                    }
-                    if (pair.seekerAccepted && pair.respondentAccepted) {
-                        try {
-                            pair(pair.tokenPairRespondent, pair.tokenPairSeeker);
-                            server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
-                            server.sendToTCP(connections.get(pair.tokenPairSeeker).getID(), pair);
-                        } catch (Exception e) {
+                    }else{
+                        if (pair.seekerAccepted && !pair.respondentAccepted) {
+                            try {
+                                server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
+                            } catch (Exception e) {
+                            }
                         }
+                        if (pair.seekerAccepted && pair.respondentAccepted) {
+                            try {
+                                pair(pair.tokenPairRespondent, pair.tokenPairSeeker);
+                                server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
+                                server.sendToTCP(connections.get(pair.tokenPairSeeker).getID(), pair);
+                            } catch (Exception e) {
+                            }
+                        }
+
                     }
+
+
                 }
                 if (object instanceof Network.Register) {
                     if (clientData != null) {

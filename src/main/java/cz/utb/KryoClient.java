@@ -34,7 +34,7 @@ public class KryoClient {
                 Network.Register register = new Network.Register();
                 register.userName = "testHost1";
                 register.token = tokenGenerator.generateRandom(20);
-                register.systemName =  register.userName;
+                register.systemName = register.userName;
                 client.sendTCP(register);
             }
 
@@ -57,8 +57,8 @@ public class KryoClient {
                         System.out.println("Registred users on server:");
                         for (int i = 0; i < registeredUsers.users.size(); i++) {
                             System.out.println(registeredUsers.users.get(i).systemName +
-                                    " "+ registeredUsers.users.get(i).userName+
-                                    " "+ registeredUsers.users.get(i).token);
+                                    " " + registeredUsers.users.get(i).userName +
+                                    " " + registeredUsers.users.get(i).token);
                         }
                     } catch (Exception e) {
                     }
@@ -66,13 +66,18 @@ public class KryoClient {
             }
 
         }));
-        try {
-            //195.178.94.66    localhost
-            client.connect(5000, "localhost", Network.port);
-            // Server communication after connection can go here, or in Listener#connected().
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
+        Thread t = new Thread() {
+            public void run() {
+                try {
+                    //195.178.94.66    localhost
+                    client.connect(5000, "localhost", Network.port);
+                    // Server communication after connection can go here, or in Listener#connected().
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        };
+        t.start();
         name = "testHost1";
         speedTestSocket = new SpeedTestSocket();
 
@@ -111,6 +116,13 @@ public class KryoClient {
             while (true) {
                 String ipnut = scanner.next().trim();
                 switch (ipnut) {
+                    case "pair":
+                        Network.Pair pair = new Network.Pair();
+                        pair.tokenPairRespondent =" aa";
+                        pair.tokenPairSeeker = "token";
+                        pair.seekerAccepted = true;
+                        pair.seekerAccepted = true;
+                        client.sendTCP(pair);
                     case "start":
                         Network.Integers integers = new Network.Integers();
                         integers.arrayIntegers = new ArrayList<Integer>();
