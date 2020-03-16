@@ -35,6 +35,7 @@ public class Network {
     }
 
     static public class Register {
+        public boolean mainClient;
         public String userName;
         public String systemName;
         public String token;

@@ -100,6 +100,7 @@ public class MyServer {
         String userName = register.userName;
         String systemName = register.systemName;
         String token = register.token;
+        boolean mainClient = register.mainClient;
         if (userName != null && systemName != null && token != null) {
             System.out.println("registered: user name <" + userName + "> system name:  <"
                     + systemName + "> token <" + token + ">");
@@ -107,6 +108,7 @@ public class MyServer {
 
             if (systemName.length() != 0) {
                 connection.clientData = new ClientData();
+                connection.clientData.mainClient = mainClient;
                 connection.clientData.userName = userName;
                 connection.clientData.systemName = systemName;
                 connection.clientData.token = token;
@@ -199,6 +201,7 @@ public class MyServer {
         for (Iterator<ClientData> aa = loggedIn.iterator(); aa.hasNext(); ) {
             ClientData cd = aa.next();
             Network.Register register = new Network.Register();
+            register.mainClient = cd.mainClient;
             register.userName = cd.userName;
             register.systemName = cd.systemName;
             register.token = cd.token;
