@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class KryoServer {
     Server server;
@@ -36,6 +37,7 @@ public class KryoServer {
                 @Override
                 public void onCompletion(SpeedTestReport report) {
                     // called when download/upload is complete
+                    String name = report.getSpeedTestMode().name();
                     BigDecimal divisor = new BigDecimal("1000000");
                     System.out.print("[completed] "
                             + report.getTransferRateOctet().divide(divisor).round(new MathContext(3)) + " MB/s  " +
@@ -83,7 +85,23 @@ public class KryoServer {
                         speedTestSocket.startDownload("ftp://speedtest.tele2.net/5MB.zip");
                         break;
                     case "upload":
-                        speedTestSocket.startUpload("http://ipv4.ikoula.testdebit.info/", 1000000, 1000);
+                        speedTestSocket.startUpload("http://ipv4.ikoula.testdebit.info/", 500000, 1000);
+                        break;
+                    case "time":
+                        long millis = System.currentTimeMillis();
+                        System.out.println(String.format("%02d min, %02d sec",
+                                TimeUnit.MILLISECONDS.toMinutes(millis)-
+                                        TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(millis)) ,
+                                TimeUnit.MILLISECONDS.toSeconds(millis) -
+                                        TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(millis))
+                        ));
+                        long a =  millis-
+                            TimeUnit.DAYS.toMillis(TimeUnit.MILLISECONDS.toDays(millis));
+                        System.out.println(a);
+                        String sb1 = Long.toString(a);
+                        sb1 = sb1.substring(1);
+                        float b = Float.valueOf(sb1);
+                        System.out.println(b);
                         break;
                 }
 

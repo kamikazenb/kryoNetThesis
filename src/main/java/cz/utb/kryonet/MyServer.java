@@ -5,17 +5,27 @@ import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import cz.utb.KryoServer;
+import fr.bmartel.speedtest.SpeedTestReport;
+import fr.bmartel.speedtest.SpeedTestSocket;
+import fr.bmartel.speedtest.inter.ISpeedTestListener;
+import fr.bmartel.speedtest.model.SpeedTestError;
 
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.*;
 
 public class MyServer {
     public Server server;
     HashSet<ClientData> loggedIn = new HashSet();
     HashMap<String, ClientConnection> connections = new HashMap<>();
+    SpeedTestSocket speedTestSocket;
+    float lastDownload;
+    float lastUpload;
 
     public MyServer() throws IOException {
+
         Log.set(Log.LEVEL_INFO);
         server = new Server() {
             protected Connection newConnection() {
@@ -49,32 +59,45 @@ public class MyServer {
                 if (object instanceof Network.TouchStart) {
                     try {
                         server.sendToTCP(connection.clientData.pair.getID(), object);
-                    }catch (Exception e){}
+                    } catch (Exception e) {
+                    }
                 }
                 if (object instanceof Network.TouchMove) {
                     try {
                         server.sendToTCP(connection.clientData.pair.getID(), object);
-                    }catch (Exception e){}
+                    } catch (Exception e) {
+                    }
                 }
+
                 if (object instanceof Network.CleanCanvas) {
                     try {
                         server.sendToTCP(connection.clientData.pair.getID(), object);
-                    }catch (Exception e){}
+                    } catch (Exception e) {
+                    }
                 }
                 if (object instanceof Network.TouchTolerance) {
                     try {
                         server.sendToTCP(connection.clientData.pair.getID(), object);
-                    }catch (Exception e){}
+                    } catch (Exception e) {
+                    }
                 }
                 if (object instanceof Network.TouchUp) {
                     try {
                         server.sendToTCP(connection.clientData.pair.getID(), object);
-                    }catch (Exception e){}
+                    } catch (Exception e) {
+                    }
                 }
                 if (object instanceof Network.ScreenSize) {
                     try {
                         server.sendToTCP(connection.clientData.pair.getID(), object);
-                    }catch (Exception e){}
+                    } catch (Exception e) {
+                    }
+                }
+                if (object instanceof Network.Request) {
+                    Network.Request request = (Network.Request) object;
+                    if (request.registredUsers) {
+                        sendRegisteredUsers();
+                    }
                 }
             }
 
@@ -209,6 +232,7 @@ public class MyServer {
         }
         server.sendToAllTCP(registeredUsers);
     }
+
 
     // This holds per connection state.
     static class ClientConnection extends Connection {
