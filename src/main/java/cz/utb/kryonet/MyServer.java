@@ -14,6 +14,8 @@ import fr.bmartel.speedtest.model.SpeedTestError;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.sql.ResultSet;
+import java.sql.*;
 import java.util.*;
 
 public class MyServer {
@@ -23,6 +25,7 @@ public class MyServer {
     SpeedTestSocket speedTestSocket;
     float lastDownload;
     float lastUpload;
+    private java.sql.Connection sqlConnection;
 
     public MyServer() throws IOException {
 
@@ -34,6 +37,25 @@ public class MyServer {
                 return new ClientConnection();
             }
         };
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new Error("Problem", e);
+        }
+        try {
+            sqlConnection = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/mydb?useLegacyDatetimeCode=false&serverTimezone=Europe/Vienna", "root", "");
+            System.out.println("DBZ connected");
+
+        } catch (SQLException e) {
+            throw new Error("Problem", e);
+        }
+
+        try {
+            sqlConnection.createStatement().executeUpdate("update client set connected = false where connected = true ");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         // For consistency, the classes to be sent over the network are
         // registered by the same method for both the client and server.
         Network.register(server);
@@ -107,6 +129,12 @@ public class MyServer {
                     unpair(((ClientConnection) c).clientData.token);
                     connections.remove(connection.clientData.systemName);
                     loggedIn.remove(connection.clientData);
+                    try {
+                        Statement stmt = sqlConnection.createStatement();
+                        stmt.executeUpdate("update  client set connected = false where token = '"+connection.clientData.token+"' ");
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
                     sendRegisteredUsers();
                 }
             }
@@ -128,6 +156,15 @@ public class MyServer {
             System.out.println("registered: user name <" + userName + "> system name:  <"
                     + systemName + "> token <" + token + ">");
             systemName = systemName.trim();
+
+            try {
+                Statement stmt = sqlConnection.createStatement();
+                stmt.executeUpdate("insert into " +
+                        "client (name, token, pairSeeker, pairRespondent, pairAccepted, connected) " +
+                        "values ('"+ userName +"' , '" + token + "', false, false, false, true)");
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
 
             if (systemName.length() != 0) {
                 connection.clientData = new ClientData();

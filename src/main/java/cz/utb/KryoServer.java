@@ -14,6 +14,8 @@ import fr.bmartel.speedtest.model.SpeedTestError;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.sql.*;
+import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -22,6 +24,7 @@ public class KryoServer {
 
     SpeedTestSocket speedTestSocket;
     TokenGenerator tokenGenerator = new TokenGenerator();
+    java.sql.Connection conn = null;
 
     public KryoServer() throws IOException {
         MyServer myServer = new MyServer();
@@ -81,6 +84,49 @@ public class KryoServer {
             while (true) {
                 String ipnut = scanner.next().trim();
                 switch (ipnut) {
+           /*         case "db":
+                        try {
+                            Class.forName("com.mysql.cj.jdbc.Driver");
+                        } catch (ClassNotFoundException e) {
+                            throw new Error("Problem", e);
+                        }
+                        try {
+                            conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/mydb?useLegacyDatetimeCode=false&serverTimezone=Europe/Vienna", "root", "");
+
+                            System.out.println("DBZ connected");
+
+                        } catch (SQLException e) {
+                            throw new Error("Problem", e);
+                        }
+                        break;
+                    case "show":
+                     Statement stmt = null;
+                        try {
+                            stmt = conn.createStatement();
+                            ResultSet rs = stmt.executeQuery("select * from client");
+                            while (rs.next()) {
+                                System.out.println(rs.getInt(1) + " " + rs.getString(2));
+                            }
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    case "insert":
+                      try {
+                            conn.createStatement().executeUpdate("insert into client (name, token, pairSeeker, pairRespondent, pairAccepted) values ('test', 'D6661', TRUE, false, false)");
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    case "close":
+                    try {
+                            conn.close();
+                            System.out.println("DBZ Closed");
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+
+                        break;*/
                     case "download":
                         speedTestSocket.startDownload("ftp://speedtest.tele2.net/5MB.zip");
                         break;
@@ -90,13 +136,13 @@ public class KryoServer {
                     case "time":
                         long millis = System.currentTimeMillis();
                         System.out.println(String.format("%02d min, %02d sec",
-                                TimeUnit.MILLISECONDS.toMinutes(millis)-
-                                        TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(millis)) ,
+                                TimeUnit.MILLISECONDS.toMinutes(millis) -
+                                        TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(millis)),
                                 TimeUnit.MILLISECONDS.toSeconds(millis) -
                                         TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(millis))
                         ));
-                        long a =  millis-
-                            TimeUnit.DAYS.toMillis(TimeUnit.MILLISECONDS.toDays(millis));
+                        long a = millis -
+                                TimeUnit.DAYS.toMillis(TimeUnit.MILLISECONDS.toDays(millis));
                         System.out.println(a);
                         String sb1 = Long.toString(a);
                         sb1 = sb1.substring(1);
