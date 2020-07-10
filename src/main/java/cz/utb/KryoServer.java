@@ -1,11 +1,8 @@
 package cz.utb;
 
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import cz.utb.kryonet.MyServer;
-import cz.utb.kryonet.Network;
 import fr.bmartel.speedtest.SpeedTestReport;
 import fr.bmartel.speedtest.SpeedTestSocket;
 import fr.bmartel.speedtest.inter.ISpeedTestListener;
@@ -14,8 +11,6 @@ import fr.bmartel.speedtest.model.SpeedTestError;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.sql.*;
-import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -25,9 +20,12 @@ public class KryoServer {
     SpeedTestSocket speedTestSocket;
     TokenGenerator tokenGenerator = new TokenGenerator();
     java.sql.Connection conn = null;
+    SQL sqlHelper;
 
     public KryoServer() throws IOException {
-        MyServer myServer = new MyServer();
+        sqlHelper = new SQL();
+        sqlHelper.connectToDatabase();
+        MyServer myServer = new MyServer(sqlHelper);
         server = myServer.server;
         new Console();
     }

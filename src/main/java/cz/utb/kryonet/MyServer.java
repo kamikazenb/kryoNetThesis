@@ -4,19 +4,15 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
-import cz.utb.KryoServer;
-import fr.bmartel.speedtest.SpeedTestReport;
+import cz.utb.SQL;
 import fr.bmartel.speedtest.SpeedTestSocket;
-import fr.bmartel.speedtest.inter.ISpeedTestListener;
-import fr.bmartel.speedtest.model.SpeedTestError;
 
 
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.sql.ResultSet;
 import java.sql.*;
 import java.util.*;
+import java.util.Date;
 
 public class MyServer {
     public Server server;
@@ -25,10 +21,11 @@ public class MyServer {
     SpeedTestSocket speedTestSocket;
     float lastDownload;
     float lastUpload;
-    private java.sql.Connection sqlConnection;
+    SQL sql;
+    boolean useDatabase = true;
 
-    public MyServer() throws IOException {
-
+    public MyServer(final SQL sql) throws IOException {
+        this.sql = sql;
         Log.set(Log.LEVEL_INFO);
         server = new Server() {
             protected Connection newConnection() {
@@ -37,25 +34,7 @@ public class MyServer {
                 return new ClientConnection();
             }
         };
-
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            throw new Error("Problem", e);
-        }
-        try {
-            sqlConnection = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/mydb?useLegacyDatetimeCode=false&serverTimezone=Europe/Vienna", "root", "");
-            System.out.println("DBZ connected");
-
-        } catch (SQLException e) {
-            throw new Error("Problem", e);
-        }
-
-        try {
-            sqlConnection.createStatement().executeUpdate("update client set connected = false where connected = true ");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        sql.removeOldRecords();
         // For consistency, the classes to be sent over the network are
         // registered by the same method for both the client and server.
         Network.register(server);
@@ -69,6 +48,11 @@ public class MyServer {
                 if (object instanceof Network.Integers) {
                     System.out.println(((Network.Integers) object).arrayIntegers.size());
                 }
+                if (object instanceof Network.UseDatabase) {
+                    useDatabase = ((Network.UseDatabase) object).useDatabase;
+                    System.out.println("Database usage: "+useDatabase);
+                    server.sendToAllExceptTCP(c.getID(), object);
+                }
                 if (object instanceof Network.Info) {
                     System.out.println(((Network.Info) object).message);
                 }
@@ -80,12 +64,14 @@ public class MyServer {
                 }
                 if (object instanceof Network.TouchStart) {
                     try {
+                        ((Network.TouchStart) object).serverReceived = new Date(System.currentTimeMillis());
                         server.sendToTCP(connection.clientData.pair.getID(), object);
                     } catch (Exception e) {
                     }
                 }
                 if (object instanceof Network.TouchMove) {
                     try {
+                        ((Network.TouchMove) object).serverReceived = new Date(System.currentTimeMillis());
                         server.sendToTCP(connection.clientData.pair.getID(), object);
                     } catch (Exception e) {
                     }
@@ -105,6 +91,7 @@ public class MyServer {
                 }
                 if (object instanceof Network.TouchUp) {
                     try {
+                        ((Network.TouchUp) object).serverReceived = new Date(System.currentTimeMillis());
                         server.sendToTCP(connection.clientData.pair.getID(), object);
                     } catch (Exception e) {
                     }
@@ -130,8 +117,7 @@ public class MyServer {
                     connections.remove(connection.clientData.systemName);
                     loggedIn.remove(connection.clientData);
                     try {
-                        Statement stmt = sqlConnection.createStatement();
-                        stmt.executeUpdate("update  client set connected = false where token = '"+connection.clientData.token+"' ");
+                        sql.connection.createStatement().executeUpdate("update  client set connected = false where token = '" + connection.clientData.token + "' ");
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }
@@ -157,15 +143,6 @@ public class MyServer {
                     + systemName + "> token <" + token + ">");
             systemName = systemName.trim();
 
-            try {
-                Statement stmt = sqlConnection.createStatement();
-                stmt.executeUpdate("insert into " +
-                        "client (name, token, pairSeeker, pairRespondent, pairAccepted, connected) " +
-                        "values ('"+ userName +"' , '" + token + "', false, false, false, true)");
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-
             if (systemName.length() != 0) {
                 connection.clientData = new ClientData();
                 connection.clientData.mainClient = mainClient;
@@ -174,40 +151,173 @@ public class MyServer {
                 connection.clientData.token = token;
                 loggedIn.add(connection.clientData);
                 connections.put(connection.clientData.token, connection);
+
+                try {
+                    sql.connection.createStatement().executeUpdate("insert into " +
+                            "client (name, token) " +
+                            "values ('" + userName + "', '" + token + "')");
+
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+                connection.clientData.id = getIdByToken(connection.clientData.token);
                 sendRegisteredUsers();
             }
         }
     }
 
-    public void networkPair(Network.Pair object, ClientData clientData, ClientConnection c) {
-        Network.Pair pair = (Network.Pair) object;
-        if (connections.get(pair.tokenPairSeeker).clientData.pair != null ||
-                connections.get(pair.tokenPairRespondent).clientData.pair != null) {
-            if (!pair.seekerAccepted) {
-                try {
-                    unpair(pair.tokenPairRespondent);
-                    unpair(pair.tokenPairSeeker);
-                    server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
-                    server.sendToTCP(connections.get(pair.tokenPairSeeker).getID(), pair);
-                } catch (Exception e) {
-                }
+    public void checkPair(int idSeeker, int idRespondent) {
+        boolean alreadyBounded = false;
+        try {
+            String query = "select respondent_idclient " +
+                    "from client_has_client where seeker_idclient = " + idSeeker + "";
+            ResultSet rs = sql.executeQuery(query);
+            int idclientRespondent = 0;
+            while (rs.next()) {
+                idclientRespondent = rs.getInt(1);
             }
-        } else {
-            if (pair.seekerAccepted && !pair.respondentAccepted) {
-                try {
-                    server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
-                } catch (Exception e) {
-                }
+            System.out.println("~~" + idclientRespondent + " idSeeker " + idSeeker + " idrespo" + idRespondent);
+            if (idRespondent == idclientRespondent) {
+                alreadyBounded = true;
             }
-            if (pair.seekerAccepted && pair.respondentAccepted) {
-                try {
-                    pair(pair.tokenPairRespondent, pair.tokenPairSeeker);
-                    server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
-                    server.sendToTCP(connections.get(pair.tokenPairSeeker).getID(), pair);
-                } catch (Exception e) {
-                }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        if (!alreadyBounded) {
+            String query = "insert into client_has_client " +
+                    "values (" + idSeeker + ", " + idRespondent + ") ";
+            sql.executeUpdate(query);
+        }
+    }
+
+    public int getIdByToken(String token) {
+        int id = 0;
+        try {
+            ResultSet rs = sql.connection.createStatement().executeQuery("select idclient " +
+                    "from client where token = '" + token + "'");
+            sql.connection.commit();
+            while (rs.next()) {
+                id = rs.getInt(1);
+            }
+        } catch (Exception e) {
+
+        }
+        return id;
+    }
+
+    public String getTokenById(int id) {
+        String dbRespondentToken = "";
+        try {
+            ResultSet rs = sql.connection.createStatement().executeQuery("select token " +
+                    "from client where idclient = " + id + "");
+            sql.connection.commit();
+            while (rs.next()) {
+                dbRespondentToken = rs.getString(1);
+            }
+        } catch (Exception e) {
+
+        }
+        return dbRespondentToken;
+    }
+
+
+    public int getIdOfPairedSeeker(int idRespondent) {
+        int idSeeker = 0;
+        try {
+            ResultSet rs = sql.connection.createStatement().executeQuery("select seeker_respondent " +
+                    "from client_has_client where respondent_idclient" +
+                    " =  " + idRespondent + " ");
+            sql.connection.commit();
+            while (rs.next()) {
+                idSeeker = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return idSeeker;
+    }
+
+    public int getIdOfPairedRespondent(int idSeeker) {
+        int idRespondent = 0;
+        try {
+            ResultSet rs = sql.connection.createStatement().executeQuery("select seeker_respondent " +
+                    "from client_has_client where respondent_idclient" +
+                    " =  " + idSeeker + " ");
+            sql.connection.commit();
+            while (rs.next()) {
+                idRespondent = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return idRespondent;
+    }
+
+    public int getIdbyTokenJavaServer(String token) {
+        int a = 0;
+        for (Iterator<ClientData> aa = loggedIn.iterator(); aa.hasNext(); ) {
+            ClientData cd = aa.next();
+            if (cd.token.equals(token)) {
+                a = cd.id;
+                break;
             }
         }
+        return a;
+    }
+
+    /**
+     * seeker, respondent, alive <br>
+     * 1           0           1  -> seeker requested connection <br>
+     * 1           1           1  -> respondent accepted connection <br>
+     * 0           1           0  -> seeker stopped connection <br>
+     * 1           0           0  -> respondent stopped connection
+     *
+     * @param object
+     * @param clientData
+     * @param c
+     */
+    public void networkPair(Network.Pair object, ClientData clientData, ClientConnection c) {
+        Network.Pair pair = (Network.Pair) object;
+        int idRespondent = getIdbyTokenJavaServer(pair.tokenPairRespondent);
+        int idSeeker = getIdbyTokenJavaServer(pair.tokenPairSeeker);
+        checkPair(idSeeker, idRespondent);
+        sql.updateClient(idRespondent, pair.seekerAccepted, pair.respondentAccepted, pair.connectionAlive);
+        sql.updateClient(idSeeker, pair.seekerAccepted, pair.respondentAccepted, pair.connectionAlive);
+
+        if (pair.connectionAlive) {
+            if (pair.seekerAccepted & !pair.respondentAccepted) {
+                try {
+                    server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            if (pair.seekerAccepted & pair.respondentAccepted) {
+                if (pair.seekerAccepted && pair.respondentAccepted) {
+                    try {
+                        pair(pair.tokenPairRespondent, pair.tokenPairSeeker);
+                        server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
+                        server.sendToTCP(connections.get(pair.tokenPairSeeker).getID(), pair);
+                    } catch (Exception e) {
+                    }
+                }
+            }
+
+        } else {
+            sql.updateClient(idRespondent, false, false, false);
+            sql.updateClient(idSeeker, false, false, false);
+
+            sql.deleteClientHasClient(idSeeker);
+            sql.deleteClientHasClient(idRespondent);
+            try {
+                unpair(pair.tokenPairRespondent);
+                unpair(pair.tokenPairSeeker);
+                server.sendToTCP(connections.get(pair.tokenPairRespondent).getID(), pair);
+                server.sendToTCP(connections.get(pair.tokenPairSeeker).getID(), pair);
+            } catch (Exception e) {
+            }
+        }
+
     }
 
     public void unpair(String incomeToken) {
