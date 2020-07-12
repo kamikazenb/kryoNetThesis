@@ -6,11 +6,14 @@ import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import cz.utb.SQL;
 import fr.bmartel.speedtest.SpeedTestSocket;
+import io.github.eterverda.sntp.SNTP;
+import io.github.eterverda.sntp.SNTPClientBuilder;
 
 
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Date;
 
@@ -23,6 +26,8 @@ public class MyServer {
     float lastUpload;
     SQL sql;
     boolean useDatabase = true;
+    SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    long timeDifference;
 
     public MyServer(final SQL sql) throws IOException {
         this.sql = sql;
@@ -34,6 +39,10 @@ public class MyServer {
                 return new ClientConnection();
             }
         };
+        SNTP.init();
+        long global = SNTP.safeCurrentTimeMillis();
+        timeDifference = global - System.currentTimeMillis();
+        System.out.println(timeDifference);
         sql.removeOldRecords();
         // For consistency, the classes to be sent over the network are
         // registered by the same method for both the client and server.
@@ -50,7 +59,7 @@ public class MyServer {
                 }
                 if (object instanceof Network.UseDatabase) {
                     useDatabase = ((Network.UseDatabase) object).useDatabase;
-                    System.out.println("Database usage: "+useDatabase);
+                    System.out.println("Database usage: " + useDatabase);
                     server.sendToAllExceptTCP(c.getID(), object);
                 }
                 if (object instanceof Network.Info) {
@@ -62,16 +71,18 @@ public class MyServer {
                 if (object instanceof Network.Register) {
                     networkRegister((Network.Register) object, clientData, connection);
                 }
-                if (object instanceof Network.TouchStart) {
+                if (object instanceof Network.Touch) {
                     try {
-                        ((Network.TouchStart) object).serverReceived = new Date(System.currentTimeMillis());
-                        server.sendToTCP(connection.clientData.pair.getID(), object);
-                    } catch (Exception e) {
-                    }
-                }
-                if (object instanceof Network.TouchMove) {
-                    try {
-                        ((Network.TouchMove) object).serverReceived = new Date(System.currentTimeMillis());
+                        ((Network.Touch) object).serverReceived = new Date(System.currentTimeMillis() + timeDifference);
+                        if(useDatabase){
+                            sql.insertTouch(((Network.Touch) object).touchType,
+                                    ((Network.Touch) object).x,
+                                    ((Network.Touch) object).y,
+                                    ((Network.Touch) object).clientCreated,
+                                    ((Network.Touch) object).serverReceived);
+                        }
+//                        System.out.println("local" + df.format(System.currentTimeMillis()) + " global" + df.format(new Date(global))
+//                                + " diff" + timeDifference);
                         server.sendToTCP(connection.clientData.pair.getID(), object);
                     } catch (Exception e) {
                     }
@@ -89,13 +100,7 @@ public class MyServer {
                     } catch (Exception e) {
                     }
                 }
-                if (object instanceof Network.TouchUp) {
-                    try {
-                        ((Network.TouchUp) object).serverReceived = new Date(System.currentTimeMillis());
-                        server.sendToTCP(connection.clientData.pair.getID(), object);
-                    } catch (Exception e) {
-                    }
-                }
+
                 if (object instanceof Network.ScreenSize) {
                     try {
                         server.sendToTCP(connection.clientData.pair.getID(), object);
@@ -160,6 +165,18 @@ public class MyServer {
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
+                Thread t = new Thread() {
+                    public void run() {
+                        try {
+                            long global = SNTP.currentTimeMillisFromNetwork();
+                            timeDifference = global - System.currentTimeMillis();
+                            System.out.println(timeDifference);
+                        }catch (IOException e){
+                            System.out.println(e);
+                        }
+                    }
+                };
+                t.start();
                 connection.clientData.id = getIdByToken(connection.clientData.token);
                 sendRegisteredUsers();
             }

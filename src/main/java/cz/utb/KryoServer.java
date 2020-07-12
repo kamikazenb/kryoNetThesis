@@ -7,10 +7,12 @@ import fr.bmartel.speedtest.SpeedTestReport;
 import fr.bmartel.speedtest.SpeedTestSocket;
 import fr.bmartel.speedtest.inter.ISpeedTestListener;
 import fr.bmartel.speedtest.model.SpeedTestError;
+import io.github.eterverda.sntp.SNTP;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -22,12 +24,16 @@ public class KryoServer {
     java.sql.Connection conn = null;
     SQL sqlHelper;
 
+
     public KryoServer() throws IOException {
         sqlHelper = new SQL();
         sqlHelper.connectToDatabase();
         MyServer myServer = new MyServer(sqlHelper);
         server = myServer.server;
+
+
         new Console();
+
     }
 
     public class Console {

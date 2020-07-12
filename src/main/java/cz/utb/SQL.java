@@ -3,9 +3,12 @@ package cz.utb;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class SQL {
     public java.sql.Connection connection;
+    SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     public SQL() {
         try {
@@ -33,6 +36,24 @@ public class SQL {
         executeUpdate(query);
     }
 
+    public void insertTouch(String touchType, float x, float y, Date clientCreated, Date serverReceived) {
+        String query = "select idtouchType from touchtype where name = '"+touchType+"'";
+        int idtouchType = 0;
+        ResultSet rs = executeQuery(query);
+        try {
+            while (rs.next()) {
+                idtouchType = rs.getInt(1);
+            }
+            query = "insert into touch (x, y, clientCeated, serverReceived, touchType_idtouchType, serverType_idserverType)" +
+                    "values ("+x+", "+y+", '"+df.format(clientCreated)+"', '"+df.format(serverReceived)+"', "+idtouchType+", 50)";
+            executeUpdate(query);
+        }catch (SQLException e){
+            System.out.println(e);
+        }
+
+        executeUpdate(query);
+    }
+
     public void executeUpdate(String query) {
         try {
             connection.setAutoCommit(false);
@@ -42,6 +63,7 @@ public class SQL {
             e.printStackTrace();
         }
     }
+
     public ResultSet executeQuery(String query) {
         ResultSet rs = null;
         try {
@@ -52,7 +74,8 @@ public class SQL {
         }
         return rs;
     }
-    public void removeOldRecords(){
+
+    public void removeOldRecords() {
         executeUpdate("update client set connected = false where connected = true ");
     }
 
