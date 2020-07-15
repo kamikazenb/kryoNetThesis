@@ -2,17 +2,25 @@ package cz.utb;
 
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
+import com.mysql.cj.log.LogFactory;
 import cz.utb.kryonet.MyServer;
 import fr.bmartel.speedtest.SpeedTestReport;
 import fr.bmartel.speedtest.SpeedTestSocket;
 import fr.bmartel.speedtest.inter.ISpeedTestListener;
 import fr.bmartel.speedtest.model.SpeedTestError;
 import io.github.eterverda.sntp.SNTP;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.codec.ServerSentEvent;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.text.SimpleDateFormat;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -30,10 +38,7 @@ public class KryoServer {
         sqlHelper.connectToDatabase();
         MyServer myServer = new MyServer(sqlHelper);
         server = myServer.server;
-
-
         new Console();
-
     }
 
     public class Console {
@@ -88,49 +93,24 @@ public class KryoServer {
             while (true) {
                 String ipnut = scanner.next().trim();
                 switch (ipnut) {
-           /*         case "db":
-                        try {
-                            Class.forName("com.mysql.cj.jdbc.Driver");
-                        } catch (ClassNotFoundException e) {
-                            throw new Error("Problem", e);
-                        }
-                        try {
-                            conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/mydb?useLegacyDatetimeCode=false&serverTimezone=Europe/Vienna", "root", "");
+                    case "sse":
+                        WebClient client = WebClient.create("http://localhost:8080/api/v1/touch");
+                        ParameterizedTypeReference<ServerSentEvent<String>> type
+                                = new ParameterizedTypeReference<ServerSentEvent<String>>() {
+                        };
+                        Logger logger = LoggerFactory.getLogger("myLogger");
+                        Flux<ServerSentEvent<String>> eventStream = client.get()
+                                .uri("/stream-sse")
+                                .retrieve()
+                                .bodyToFlux(type);
 
-                            System.out.println("DBZ connected");
+                        eventStream.subscribe(
+                                content -> logger.info("Time: {} - event: name[{}], id [{}], content[{}] ",
+                                        LocalTime.now(), content.event(), content.id(), content.data()),
+                                error -> logger.error("Error receiving SSE: {}", error),
+                                () -> logger.info("Completed!!!"));
+                        break;
 
-                        } catch (SQLException e) {
-                            throw new Error("Problem", e);
-                        }
-                        break;
-                    case "show":
-                     Statement stmt = null;
-                        try {
-                            stmt = conn.createStatement();
-                            ResultSet rs = stmt.executeQuery("select * from client");
-                            while (rs.next()) {
-                                System.out.println(rs.getInt(1) + " " + rs.getString(2));
-                            }
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                        }
-                        break;
-                    case "insert":
-                      try {
-                            conn.createStatement().executeUpdate("insert into client (name, token, pairSeeker, pairRespondent, pairAccepted) values ('test', 'D6661', TRUE, false, false)");
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                        }
-                        break;
-                    case "close":
-                    try {
-                            conn.close();
-                            System.out.println("DBZ Closed");
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                        }
-
-                        break;*/
                     case "download":
                         speedTestSocket.startDownload("ftp://speedtest.tele2.net/5MB.zip");
                         break;
@@ -162,7 +142,7 @@ public class KryoServer {
     public static void main(String[] args) throws IOException {
         Log.set(Log.LEVEL_INFO);
         System.out.println("Creating server...");
-
         new KryoServer();
     }
+
 }

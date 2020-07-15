@@ -1,3 +1,4 @@
+/*
 package cz.utb;
 
 import com.esotericsoftware.kryonet.Client;
@@ -149,3 +150,4 @@ public class KryoClient {
         new KryoClient();
     }
 }
+*/

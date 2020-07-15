@@ -36,22 +36,20 @@ public class SQL {
         executeUpdate(query);
     }
 
-    public void insertTouch(String touchType, float x, float y, Date clientCreated, Date serverReceived) {
-        String query = "select idtouchType from touchtype where name = '"+touchType+"'";
-        int idtouchType = 0;
+    public void insertTouch(String touchType, float x, float y, Date clientCreated, Date serverReceived, String token) {
+        String query = "select idclient from client where token = '" + token + "'";
+        int idClient = 0;
         ResultSet rs = executeQuery(query);
         try {
             while (rs.next()) {
-                idtouchType = rs.getInt(1);
+                idClient = rs.getInt(1);
             }
-            query = "insert into touch (x, y, clientCeated, serverReceived, touchType_idtouchType, serverType_idserverType)" +
-                    "values ("+x+", "+y+", '"+df.format(clientCreated)+"', '"+df.format(serverReceived)+"', "+idtouchType+", 50)";
+            query = "insert into touch (touchType, x, y, clientCreated, serverReceived, serverType_idserverType, client_idclient)" +
+                    "values ('" + touchType + "', " + x + ", " + y + ", '" + df.format(clientCreated) + "', '" + df.format(serverReceived) + "', 1, " + idClient + ")";
             executeUpdate(query);
-        }catch (SQLException e){
+        } catch (SQLException e) {
             System.out.println(e);
         }
-
-        executeUpdate(query);
     }
 
     public void executeUpdate(String query) {
