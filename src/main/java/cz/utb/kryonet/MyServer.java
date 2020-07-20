@@ -7,10 +7,6 @@ import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import cz.utb.SQL;
 import fr.bmartel.speedtest.SpeedTestSocket;
-import io.github.eterverda.sntp.SNTP;
-import io.github.eterverda.sntp.SNTPClientBuilder;
-
-
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.*;
@@ -28,11 +24,9 @@ public class MyServer {
     SQL sql;
     boolean useDatabase = true;
     SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-    long timeDifference;
 
     public MyServer(final SQL sql) throws IOException {
         this.sql = sql;
-        Log.set(Log.LEVEL_INFO);
         server = new Server() {
             protected Connection newConnection() {
                 // By providing our own connection implementation, we can store per
@@ -40,10 +34,7 @@ public class MyServer {
                 return new ClientConnection();
             }
         };
-        SNTP.init();
-        long global = SNTP.safeCurrentTimeMillis();
-        timeDifference = global - System.currentTimeMillis();
-        System.out.println(timeDifference);
+
         sql.removeOldRecords();
         // For consistency, the classes to be sent over the network are
         // registered by the same method for both the client and server.
@@ -64,7 +55,7 @@ public class MyServer {
                 }
                 if (object instanceof Network.UseDatabase) {
                     useDatabase = ((Network.UseDatabase) object).useDatabase;
-                    System.out.println("Database usage: " + useDatabase);
+                    Log.info("Database", "using " + useDatabase);
                     server.sendToAllExceptTCP(c.getID(), object);
                 }
                 if (object instanceof Network.Register) {
@@ -72,21 +63,22 @@ public class MyServer {
                 }
                 if (object instanceof Network.Touch) {
                     try {
-                        ((Network.Touch) object).serverReceived = new Date(System.currentTimeMillis() + timeDifference);
                         if (useDatabase) {
                             sql.insertTouch(((Network.Touch) object).touchType,
                                     ((Network.Touch) object).x,
                                     ((Network.Touch) object).y,
                                     ((Network.Touch) object).clientCreated,
-                                    ((Network.Touch) object).serverReceived,
                                     connection.clientData.token);
                         }
 //                        System.out.println("local" + df.format(System.currentTimeMillis()) + " global" + df.format(new Date(global))
 //                                + " diff" + timeDifference);
-                        sendTouchToFollovers(connection, object);
+
 //                        server.sendToTCP(connection.clientData.pair.getID(), object);
                     } catch (Exception e) {
+                        Log.error(e.toString(),
+                                e.getStackTrace()[0].toString());
                     }
+                    sendTouchToFollovers(connection, object);
                 }
             }
 
@@ -97,8 +89,9 @@ public class MyServer {
                     loggedIn.remove(connection.clientData);
                     try {
                         sql.connection.createStatement().executeUpdate("update  client set connected = false where token = '" + connection.clientData.token + "' ");
-                    } catch (SQLException e) {
-                        e.printStackTrace();
+                    } catch (NullPointerException | SQLException e) {
+                        Log.error(e.toString(),
+                                e.getStackTrace()[0].toString());
                     }
                     sendRegisteredUsers();
                 }
@@ -116,7 +109,8 @@ public class MyServer {
         String userName = register.userName;
         String token = register.token;
         if (userName != null && token != null) {
-            System.out.println("registered: user name <" + userName + "> token <" + token + ">");
+            Log.info("client", "registered <" + userName + "> token <" + token + ">");
+
             if (userName.length() != 0) {
                 connection.clientData = new ClientData();
                 connection.clientData.userName = userName;
@@ -129,21 +123,11 @@ public class MyServer {
                             "client (name, token) " +
                             "values ('" + userName + "', '" + token + "')");
 
-                } catch (SQLException e) {
-                    e.printStackTrace();
+                } catch (NullPointerException | SQLException e) {
+                    Log.error(e.toString(),
+                            e.getStackTrace()[0].toString());
                 }
-                Thread t = new Thread() {
-                    public void run() {
-                        try {
-                            long global = SNTP.currentTimeMillisFromNetwork();
-                            timeDifference = global - System.currentTimeMillis();
-                            System.out.println(timeDifference);
-                        } catch (IOException e) {
-                            System.out.println(e);
-                        }
-                    }
-                };
-                t.start();
+
                 connection.clientData.id = getIdByToken(connection.clientData.token);
                 sendRegisteredUsers();
             }
@@ -151,12 +135,14 @@ public class MyServer {
     }
 
     public void sendTouchToFollovers(ClientConnection clientConnection, Object o) {
-        for (ClientConnection c: connections.values()) {
+        for (ClientConnection c : connections.values()) {
             try {
-                if(c.clientData.followClient.equals(clientConnection.clientData.token)){
-                    c.sendTCP((Network.Touch)o);
+                if (c.clientData.followClient.equals(clientConnection.clientData.token)) {
+                    c.sendTCP((Network.Touch) o);
                 }
-            }catch (Exception e){
+            } catch (Exception e) {
+                Log.error(e.toString(),
+                        e.getStackTrace()[0].toString());
             }
         }
     }
@@ -217,8 +203,9 @@ public class MyServer {
             while (rs.next()) {
                 idRespondent = rs.getInt(1);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } catch (NullPointerException|SQLException e) {
+             Log.error(e.toString(),
+                    e.getStackTrace()[0].toString());
         }
         return idRespondent;
     }

@@ -1,5 +1,7 @@
 package cz.utb;
 
+import com.esotericsoftware.minlog.Log;
+
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,9 +15,10 @@ public class SQL {
     public SQL() {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-
         } catch (ClassNotFoundException e) {
-            throw new Error("Problem", e);
+            Log.error(e.toString(),
+                    e.getStackTrace()[0].toString());
+//            throw new Error("Problem", e);
         }
 
     }
@@ -24,9 +27,10 @@ public class SQL {
         try {
             connection = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/mydb?useLegacyDatetimeCode=false&serverTimezone=Europe/Vienna", "root", "");
             connection.setAutoCommit(false);
-            System.out.println("DBZ connected");
+            Log.info("Successfully connected to database");
         } catch (SQLException e) {
-            throw new Error("Problem", e);
+            Log.error(e.toString(),
+                    e.getStackTrace()[0].toString());
         }
     }
 
@@ -36,7 +40,7 @@ public class SQL {
         executeUpdate(query);
     }
 
-    public void insertTouch(String touchType, float x, float y, Date clientCreated, Date serverReceived, String token) {
+    public void insertTouch(String touchType, float x, float y, Date clientCreated, String token) {
         String query = "select idclient from client where token = '" + token + "'";
         int idClient = 0;
         ResultSet rs = executeQuery(query);
@@ -44,11 +48,12 @@ public class SQL {
             while (rs.next()) {
                 idClient = rs.getInt(1);
             }
-            query = "insert into touch (touchType, x, y, clientCreated, serverReceived, serverType_idserverType, client_idclient)" +
-                    "values ('" + touchType + "', " + x + ", " + y + ", '" + df.format(clientCreated) + "', '" + df.format(serverReceived) + "', 1, " + idClient + ")";
+            query = "insert into touch (touchType, x, y, clientCreated, client_idclient)" +
+                    "values ('" + touchType + "', " + x + ", " + y + ", '" + df.format(clientCreated) + "', " + idClient + ")";
             executeUpdate(query);
         } catch (SQLException e) {
-            System.out.println(e);
+            Log.error(e.getStackTrace()[0].toString(),
+                    e.toString());
         }
     }
 
@@ -57,8 +62,9 @@ public class SQL {
             connection.setAutoCommit(false);
             connection.createStatement().executeUpdate(query);
             connection.commit();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } catch (NullPointerException|SQLException e) {
+            Log.error(e.toString(),
+                    e.getStackTrace()[0].toString());
         }
     }
 
@@ -68,7 +74,8 @@ public class SQL {
             rs = connection.createStatement().executeQuery(query);
             connection.commit();
         } catch (SQLException e) {
-            e.printStackTrace();
+            Log.error(e.toString(),
+                    e.getStackTrace()[0].toString());
         }
         return rs;
     }

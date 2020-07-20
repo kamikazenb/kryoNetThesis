@@ -14,6 +14,16 @@
             <email>bc.michal.vydra@gmail.com</email>
         </developer>
     </developers>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+    <repositories>
+        <repository>
+            <id>gitRepo</id>
+            <name>your custom repo</name>
+            <url>https://raw.githubusercontent.com/eterverda/sntp/m2/</url>
+        </repository>
+    </repositories>
     <build>
         <plugins>
             <plugin>
@@ -24,6 +34,39 @@
                     <target>8</target>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>cz.utb.KryoServer</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <mainClass>cz.utb.KryoServer</mainClass>
+                    </manifest>
+                </archive>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                    <phase>package</phase> <!-- bind to the packaging phase -->
+                    <goals>
+                        <goal>single</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
         </plugins>
     </build>
     <dependencies>
@@ -33,7 +76,6 @@
             <artifactId>kryonet</artifactId>
             <version>2.22.0-RC1</version>
         </dependency>
-
         <!-- https://mvnrepository.com/artifact/fr.bmartel/jspeedtest -->
         <dependency>
             <groupId>fr.bmartel</groupId>
@@ -45,30 +87,10 @@
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.20</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.springframework/spring-webflux -->
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-webflux</artifactId>
-            <version>5.2.7.RELEASE</version>
-            <classifier>javadoc</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-core</artifactId>
-            <version>5.4.9.Final</version>
-            <classifier>javadoc</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-            <version>2.3.1.RELEASE</version>
-            <classifier>javadoc</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.projectreactor</groupId>
-            <artifactId>reactor-spring</artifactId>
-            <version>1.0.1.RELEASE</version>
-            <classifier>javadoc</classifier>
+            <groupId>io.github.eterverda.sntp</groupId>
+            <artifactId>sntp</artifactId>
+            <version>0.1.12</version>
         </dependency>
     </dependencies>
 

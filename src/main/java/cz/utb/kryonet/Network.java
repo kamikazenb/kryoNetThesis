@@ -58,7 +58,6 @@ public class Network {
         float y;
         String touchType;
         Date clientCreated;
-        Date serverReceived;
     }
 
 }
