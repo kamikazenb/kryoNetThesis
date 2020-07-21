@@ -24,13 +24,25 @@ public class SQL {
     }
 
     public void connectToDatabase() {
+        boolean connected = false;
         try {
-            connection = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/mydb?useLegacyDatetimeCode=false&serverTimezone=Europe/Vienna", "root", "");
+            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/mydb", "root", "account");
             connection.setAutoCommit(false);
             Log.info("Successfully connected to database");
+            connected = true;
         } catch (SQLException e) {
             Log.error(e.toString(),
                     e.getStackTrace()[0].toString());
+        }
+        if(!connected){
+            try {
+                connection = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/mydb?useLegacyDatetimeCode=false&serverTimezone=Europe/Vienna", "root", "");
+                connection.setAutoCommit(false);
+                Log.info("Successfully connected to database");
+            } catch (SQLException e) {
+                Log.error(e.toString(),
+                        e.getStackTrace()[0].toString());
+            }
         }
     }
 
