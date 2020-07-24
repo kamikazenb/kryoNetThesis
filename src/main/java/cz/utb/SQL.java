@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class SQL {
+    String TAG = "SQL";
     public java.sql.Connection connection;
     SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
@@ -23,27 +24,19 @@ public class SQL {
 
     }
 
+
     public void connectToDatabase() {
-        boolean connected = false;
+
         try {
-            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/mydb", "root", "account");
+            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/mydb?useLegacyDatetimeCode=false&serverTimezone=Europe/Vienna", "root", "account");
             connection.setAutoCommit(false);
             Log.info("Successfully connected to database");
-            connected = true;
+
         } catch (SQLException e) {
             Log.error(e.toString(),
                     e.getStackTrace()[0].toString());
         }
-        if(!connected){
-            try {
-                connection = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/mydb?useLegacyDatetimeCode=false&serverTimezone=Europe/Vienna", "root", "");
-                connection.setAutoCommit(false);
-                Log.info("Successfully connected to database");
-            } catch (SQLException e) {
-                Log.error(e.toString(),
-                        e.getStackTrace()[0].toString());
-            }
-        }
+
     }
 
     public void deleteClientHasClient(int id) {
@@ -52,21 +45,29 @@ public class SQL {
         executeUpdate(query);
     }
 
-    public void insertTouch(String touchType, float x, float y, Date clientCreated, String token) {
-        String query = "select idclient from client where token = '" + token + "'";
-        int idClient = 0;
-        ResultSet rs = executeQuery(query);
+    public void deleteOldTouches() {
+        ResultSet rs = executeQuery("SELECT COUNT(*) FROM touch;");
         try {
             while (rs.next()) {
-                idClient = rs.getInt(1);
+                Log.info(TAG, "Rows in touch: " + rs.getInt(1));
+                if (rs.getInt(1) > 1200) {
+                    executeUpdate("delete from touch");
+                    break;
+                }
             }
-            query = "insert into touch (touchType, x, y, clientCreated, client_idclient)" +
-                    "values ('" + touchType + "', " + x + ", " + y + ", '" + df.format(clientCreated) + "', " + idClient + ")";
-            executeUpdate(query);
-        } catch (SQLException e) {
+        } catch (NullPointerException | SQLException e) {
             Log.error(e.getStackTrace()[0].toString(),
                     e.toString());
         }
+
+
+    }
+
+
+    public void insertTouch(String touchType, float x, float y, Date clientCreated, int idClient) {
+        String query = "insert into touch (touchType, x, y, clientCreated, client_idclient)" +
+                "values ('" + touchType + "', " + x + ", " + y + ", '" + df.format(clientCreated) + "', " + idClient + ")";
+        executeUpdate(query);
     }
 
     public void executeUpdate(String query) {
@@ -74,7 +75,7 @@ public class SQL {
             connection.setAutoCommit(false);
             connection.createStatement().executeUpdate(query);
             connection.commit();
-        } catch (NullPointerException|SQLException e) {
+        } catch (NullPointerException | SQLException e) {
             Log.error(e.toString(),
                     e.getStackTrace()[0].toString());
         }
@@ -106,6 +107,36 @@ public class SQL {
 
     public int boolToInt(boolean bool) {
         return bool ? 1 : 0;
+    }
+
+    public int getIdByToken(String token) {
+        int id = 0;
+        try {
+            ResultSet rs = connection.createStatement().executeQuery("select idclient " +
+                    "from client where token = '" + token + "'");
+            connection.commit();
+            while (rs.next()) {
+                id = rs.getInt(1);
+            }
+        } catch (Exception e) {
+
+        }
+        return id;
+    }
+
+    public String getTokenById(int id) {
+        String dbRespondentToken = "";
+        try {
+            ResultSet rs = connection.createStatement().executeQuery("select token " +
+                    "from client where idclient = " + id + "");
+            connection.commit();
+            while (rs.next()) {
+                dbRespondentToken = rs.getString(1);
+            }
+        } catch (Exception e) {
+
+        }
+        return dbRespondentToken;
     }
 
 }

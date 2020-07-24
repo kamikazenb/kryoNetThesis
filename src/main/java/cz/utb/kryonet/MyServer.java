@@ -7,6 +7,7 @@ import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import cz.utb.SQL;
 import fr.bmartel.speedtest.SpeedTestSocket;
+
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.*;
@@ -62,23 +63,26 @@ public class MyServer {
                     networkRegister((Network.Register) object, clientData, connection);
                 }
                 if (object instanceof Network.Touch) {
+                    int idClient = 0;
                     try {
                         if (useDatabase) {
-                            sql.insertTouch(((Network.Touch) object).touchType,
-                                    ((Network.Touch) object).x,
-                                    ((Network.Touch) object).y,
-                                    ((Network.Touch) object).clientCreated,
-                                    connection.clientData.token);
+                            idClient = sql.getIdByToken(((ClientConnection) c).clientData.token);
                         }
-//                        System.out.println("local" + df.format(System.currentTimeMillis()) + " global" + df.format(new Date(global))
-//                                + " diff" + timeDifference);
-
-//                        server.sendToTCP(connection.clientData.pair.getID(), object);
                     } catch (Exception e) {
                         Log.error(e.toString(),
                                 e.getStackTrace()[0].toString());
                     }
                     sendTouchToFollovers(connection, object);
+                    try {
+                        sql.insertTouch(((Network.Touch) object).touchType,
+                                ((Network.Touch) object).x,
+                                ((Network.Touch) object).y,
+                                ((Network.Touch) object).clientCreated,
+                                idClient);
+                    } catch (Exception e) {
+                        Log.error(e.toString(),
+                                e.getStackTrace()[0].toString());
+                    }
                 }
             }
 
@@ -105,6 +109,9 @@ public class MyServer {
         if (clientData != null) {
             return;
         }
+        sql.deleteOldTouches();
+
+
         Network.Register register = object;
         String userName = register.userName;
         String token = register.token;
@@ -128,7 +135,7 @@ public class MyServer {
                             e.getStackTrace()[0].toString());
                 }
 
-                connection.clientData.id = getIdByToken(connection.clientData.token);
+                connection.clientData.id = sql.getIdByToken(connection.clientData.token);
                 sendRegisteredUsers();
             }
         }
@@ -147,35 +154,6 @@ public class MyServer {
         }
     }
 
-    public int getIdByToken(String token) {
-        int id = 0;
-        try {
-            ResultSet rs = sql.connection.createStatement().executeQuery("select idclient " +
-                    "from client where token = '" + token + "'");
-            sql.connection.commit();
-            while (rs.next()) {
-                id = rs.getInt(1);
-            }
-        } catch (Exception e) {
-
-        }
-        return id;
-    }
-
-    public String getTokenById(int id) {
-        String dbRespondentToken = "";
-        try {
-            ResultSet rs = sql.connection.createStatement().executeQuery("select token " +
-                    "from client where idclient = " + id + "");
-            sql.connection.commit();
-            while (rs.next()) {
-                dbRespondentToken = rs.getString(1);
-            }
-        } catch (Exception e) {
-
-        }
-        return dbRespondentToken;
-    }
 
     public int getIdOfPairedSeeker(int idRespondent) {
         int idSeeker = 0;
@@ -203,8 +181,8 @@ public class MyServer {
             while (rs.next()) {
                 idRespondent = rs.getInt(1);
             }
-        } catch (NullPointerException|SQLException e) {
-             Log.error(e.toString(),
+        } catch (NullPointerException | SQLException e) {
+            Log.error(e.toString(),
                     e.getStackTrace()[0].toString());
         }
         return idRespondent;
