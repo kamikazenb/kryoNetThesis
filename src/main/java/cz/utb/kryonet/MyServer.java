@@ -62,7 +62,7 @@ public class MyServer {
                 if (object instanceof Network.Register) {
                     networkRegister((Network.Register) object, clientData, connection);
                 }
-                if (object instanceof Network.Touch) {
+                if (object instanceof Network.Touches) {
                     int idClient = 0;
                     try {
                         if (useDatabase) {
@@ -73,15 +73,18 @@ public class MyServer {
                                 e.getStackTrace()[0].toString());
                     }
                     sendTouchToFollovers(connection, object);
-                    try {
-                        sql.insertTouch(((Network.Touch) object).touchType,
-                                ((Network.Touch) object).x,
-                                ((Network.Touch) object).y,
-                                ((Network.Touch) object).clientCreated,
-                                idClient);
-                    } catch (Exception e) {
-                        Log.error(e.toString(),
-                                e.getStackTrace()[0].toString());
+                    for (Network.Touch touch : ((Network.Touches) object).values) {
+
+                        try {
+                            sql.insertTouch(touch.touchType,
+                                    touch.x,
+                                    touch.y,
+                                    touch.clientCreated,
+                                    idClient);
+                        } catch (Exception e) {
+                            Log.error(e.toString(),
+                                    e.getStackTrace()[0].toString());
+                        }
                     }
                 }
             }
@@ -145,7 +148,7 @@ public class MyServer {
         for (ClientConnection c : connections.values()) {
             try {
                 if (c.clientData.followClient.equals(clientConnection.clientData.token)) {
-                    c.sendTCP((Network.Touch) o);
+                    c.sendTCP(o);
                 }
             } catch (Exception e) {
                 Log.error(e.toString(),
