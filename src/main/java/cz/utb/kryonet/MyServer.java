@@ -157,52 +157,6 @@ public class MyServer {
         }
     }
 
-
-    public int getIdOfPairedSeeker(int idRespondent) {
-        int idSeeker = 0;
-        try {
-            ResultSet rs = sql.connection.createStatement().executeQuery("select seeker_respondent " +
-                    "from client_has_client where respondent_idclient" +
-                    " =  " + idRespondent + " ");
-            sql.connection.commit();
-            while (rs.next()) {
-                idSeeker = rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return idSeeker;
-    }
-
-    public int getIdOfPairedRespondent(int idSeeker) {
-        int idRespondent = 0;
-        try {
-            ResultSet rs = sql.connection.createStatement().executeQuery("select seeker_respondent " +
-                    "from client_has_client where respondent_idclient" +
-                    " =  " + idSeeker + " ");
-            sql.connection.commit();
-            while (rs.next()) {
-                idRespondent = rs.getInt(1);
-            }
-        } catch (NullPointerException | SQLException e) {
-            Log.error(e.toString(),
-                    e.getStackTrace()[0].toString());
-        }
-        return idRespondent;
-    }
-
-    public int getIdbyTokenJavaServer(String token) {
-        int a = 0;
-        for (Iterator<ClientData> aa = loggedIn.iterator(); aa.hasNext(); ) {
-            ClientData cd = aa.next();
-            if (cd.token.equals(token)) {
-                a = cd.id;
-                break;
-            }
-        }
-        return a;
-    }
-
     public void sendRegisteredUsers() {
         Network.RegisteredUsers registeredUsers = new Network.RegisteredUsers();
         registeredUsers.users = new ArrayList<Network.Register>();

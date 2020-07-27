@@ -39,11 +39,6 @@ public class SQL {
 
     }
 
-    public void deleteClientHasClient(int id) {
-        String query = "DELETE FROM client_has_client WHERE " +
-                " respondent_idclient = " + id + " or seeker_idclient =  " + id + "";
-        executeUpdate(query);
-    }
 
     public void deleteOldTouches() {
         ResultSet rs = executeQuery("SELECT COUNT(*) FROM touch;");
@@ -97,13 +92,6 @@ public class SQL {
         executeUpdate("update client set connected = false where connected = true ");
     }
 
-    public void updateClient(int id, boolean pairSeeker, boolean pairRespondent, boolean pairAccepted) {
-        String query = "update client " +
-                "set pairSeeker = " + boolToInt(pairSeeker) + ", pairRespondent = " + boolToInt(pairRespondent) + ", " +
-                "pairAccepted = " + boolToInt(pairAccepted) + " " +
-                "where idclient = " + id + "";
-        executeUpdate(query);
-    }
 
     public int boolToInt(boolean bool) {
         return bool ? 1 : 0;
@@ -122,21 +110,6 @@ public class SQL {
 
         }
         return id;
-    }
-
-    public String getTokenById(int id) {
-        String dbRespondentToken = "";
-        try {
-            ResultSet rs = connection.createStatement().executeQuery("select token " +
-                    "from client where idclient = " + id + "");
-            connection.commit();
-            while (rs.next()) {
-                dbRespondentToken = rs.getString(1);
-            }
-        } catch (Exception e) {
-
-        }
-        return dbRespondentToken;
     }
 
 }
